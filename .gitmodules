@@ -1,3 +1,3 @@
 [submodule "Assets/Modules/unity-utilities"]
 	path = Assets/Modules/unity-utilities
-	url = https://gitlab.com/draft.sama/unity-utilities.git
+	url = git@github.com:draftsama/unity-utilities.git
