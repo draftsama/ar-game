@@ -6,7 +6,6 @@ using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
 using UniRx;
 using System;
-using TMPro;
 
 [RequireComponent(typeof(ARRaycastManager))]
 public class ARPlace : MonoBehaviour
@@ -99,11 +98,12 @@ public class ARPlace : MonoBehaviour
             m_IndicatorObj.SetActive(false);
 
             m_PlaneObj.transform.position = m_IndicatorObj.transform.position;
+            m_PlaneObj.transform.rotation = m_IndicatorObj.transform.rotation;
             SetState(State.Completed);
             _DisposableUpdate?.Dispose();
             m_ARPlaceText.text = string.Empty;
 
-
+            SpawnMonsterManager.Instance.StartSpawn();
         }
 
     }
