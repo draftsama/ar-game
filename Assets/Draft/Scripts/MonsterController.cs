@@ -9,29 +9,29 @@ using UnityEngine;
 public class MonsterController : MonoBehaviour
 {
     [SerializeField] private Transform m_Target;
-
-    private Transform _Transform;
-    private Vector3 _SpectifyAxis = new Vector3(1, 0, 1);
     [SerializeField] private float m_RotateSpeed = 3f;
     [SerializeField] private float m_MoveSpeed = 3f;
     [SerializeField] private float m_MinFollowDistance = 10f;
     [SerializeField] private float m_MaxFollowDistance = 100f;
     [SerializeField] private float m_Health = 100f;
     [SerializeField] private GameObject m_HitFXPrefab;
-
     [SerializeField] private Animator m_Animator;
-
+   
+    private Transform _Transform;
+    private Vector3 _SpectifyAxis = new Vector3(1, 0, 1);
     private Vector3 _MovePostion;
-
     private Renderer[] _Renderers;
-    float _DissolveProgress = 1;
-
-   public enum  AnimationState
+    private float _DissolveProgress = 1;
+    private Collider _Collider;
+    public enum AnimationState
     {
-        Idle,Run,Attack,Die
+        Idle,
+        Run,
+        Attack,
+        Die
     }
 
-    [SerializeField]private AnimationState _AnimationState;
+    [SerializeField] private AnimationState _AnimationState;
 
     private IDisposable _UpdateDisposable;
     private IDisposable _AnimatorDisposable;
@@ -40,21 +40,21 @@ public class MonsterController : MonoBehaviour
     {
         _Transform = transform;
         _Renderers = _Transform.GetComponentsInChildren<Renderer>();
-
-        
-     
+        _Collider = GetComponent<Collider>();
     }
 
     private void Start()
     {
     }
 
-    private void OnTriggerEnter(Collider other)
+    private void OnCollisionEnter(Collision collision)
     {
-        var fireball = other.gameObject.GetComponent<Fireball>();
-        if(fireball != null)
+        if (m_Health <= 0) return;
+        ContactPoint contact = collision.contacts[0];
+        var fireball = collision.gameObject.GetComponent<Fireball>();
+        if (fireball != null)
         {
-            ObjectPoolingManager.CreateObject("HitFx", m_HitFXPrefab, other.transform.position, Quaternion.identity,
+            ObjectPoolingManager.CreateObject("HitFx", m_HitFXPrefab, contact.point, Quaternion.identity,
                 null);
             ObjectPoolingManager.KillObject(fireball.gameObject);
             m_Health -= 20;
@@ -66,6 +66,7 @@ public class MonsterController : MonoBehaviour
         Debug.Log("init");
 
         m_Target = _target;
+        _Collider.enabled = true;
         _AnimationState = AnimationState.Idle;
         m_Health = 100;
         _DissolveProgress = 1;
@@ -74,35 +75,33 @@ public class MonsterController : MonoBehaviour
         _MovePostion = _Transform.position;
         for (int i = 0; i < _Renderers.Length; i++)
         {
-            _Renderers[i].material.SetFloat("_Progress",_DissolveProgress);
+            _Renderers[i].material.SetFloat("_Progress", _DissolveProgress);
         }
-        
+
         var observer = m_Animator.GetBehaviour<ObservableStateMachineTrigger>();
         _AnimatorDisposable?.Dispose();
-        _AnimatorDisposable =  observer.OnStateUpdateAsObservable().Subscribe(_ =>
+        _AnimatorDisposable = observer.OnStateUpdateAsObservable().Subscribe(_ =>
         {
             if (_.StateInfo.normalizedTime >= _.StateInfo.length && _DissolveProgress >= 0)
             {
-
                 _DissolveProgress -= Time.deltaTime * 0.5f;
                 for (int i = 0; i < _Renderers.Length; i++)
                 {
-                    _Renderers[i].material.SetFloat("_Progress",_DissolveProgress);
+                    _Renderers[i].material.SetFloat("_Progress", _DissolveProgress);
                 }
 
                 if (_DissolveProgress <= 0)
                 {
                     _AnimatorDisposable?.Dispose();
-             
+
                     ObjectPoolingManager.KillObject(gameObject);
                 }
-
             }
         }).AddTo(this);
-        
+
         _UpdateDisposable?.Dispose();
 
-        _UpdateDisposable = Observable.EveryUpdate().Subscribe(_=>Running()).AddTo(this);
+        _UpdateDisposable = Observable.EveryUpdate().Subscribe(_ => Running()).AddTo(this);
     }
 
     void Running()
@@ -113,12 +112,13 @@ public class MonsterController : MonoBehaviour
             {
                 _AnimationState = AnimationState.Die;
                 m_Animator.SetTrigger("Die");
-                
             }
+
+            _Collider.enabled = false;
             _UpdateDisposable?.Dispose();
             return;
         }
-        
+
         var position = m_Target.position.ToSpectifyAxis(_SpectifyAxis);
         var targetPosition = _Transform.position.ToSpectifyAxis(_SpectifyAxis);
 
@@ -138,7 +138,8 @@ public class MonsterController : MonoBehaviour
                 _AnimationState = AnimationState.Run;
                 m_Animator.SetTrigger("Run");
             }
-        }else if (distance < m_MinFollowDistance)
+        }
+        else if (distance < m_MinFollowDistance)
         {
             if (_AnimationState != AnimationState.Attack)
             {

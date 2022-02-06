@@ -14,9 +14,11 @@ public class FireballProjectile : MonoBehaviour
     [SerializeField] private CanvasGroup m_AimCanvas;
     private Vector3 m_AimPosition;
 
+    private float _LastTime;
+    private float _DelayTime = 0.5f;
     void Start()
     {
-
+        _LastTime = Time.time;
     }
 
     private void OnEnable()
@@ -31,6 +33,8 @@ public class FireballProjectile : MonoBehaviour
     }
     void Update()
     {
+        if (Time.time - _LastTime < _DelayTime) return;
+        
         var centerScreenPoint = new Vector2(Screen.width / 2f, Screen.height / 2f);
 
         Ray ray = Camera.main.ScreenPointToRay(centerScreenPoint);
@@ -40,6 +44,8 @@ public class FireballProjectile : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Space) || Input.GetMouseButtonDown(0))
         {
+            _LastTime = Time.time;
+
             ObjectPoolingManager.CreateObject("Bullet", m_BulletPrefab, m_SpawnTransform.position, m_SpawnTransform.rotation);
         }
     }
